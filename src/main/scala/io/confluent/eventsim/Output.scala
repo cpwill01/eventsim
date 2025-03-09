@@ -23,7 +23,7 @@ object Output {
   }
 
   private class FileEventWriter(val constructor: events.Constructor, val file: File) extends Object with canwrite {
-    val out = new FileOutputStream(file)
+    val out = new FileOutputStream(file, true)
 
     def write() = out.write(constructor.end().asInstanceOf[Array[Byte]])
 
@@ -82,16 +82,16 @@ object Output {
 
   val authEventWriter =
     if (kbl.isSupplied) new KafkaEventWriter(authConstructor, "auth_events", kbl.get.get)
-    else new FileEventWriter(authConstructor, new File(dirName, "auth_events"))
+    else new FileEventWriter(authConstructor, new File(dirName, "auth_events.json"))
   val listenEventWriter =
     if (kbl.isSupplied) new KafkaEventWriter(listenConstructor, "listen_events", kbl.get.get)
-    else new FileEventWriter(listenConstructor, new File(dirName, "listen_events"))
+    else new FileEventWriter(listenConstructor, new File(dirName, "listen_events.json"))
   val pageViewEventWriter =
     if (kbl.isSupplied) new KafkaEventWriter(pageViewConstructor, "page_view_events", kbl.get.get)
-    else new FileEventWriter(pageViewConstructor, new File(dirName, "page_view_events"))
+    else new FileEventWriter(pageViewConstructor, new File(dirName, "page_view_events.json"))
   val statusChangeEventWriter =
     if (kbl.isSupplied) new KafkaEventWriter(statusChangeConstructor, "status_change_events", kbl.get.get)
-    else new FileEventWriter(statusChangeConstructor, new File(dirName, "status_change_events"))
+    else new FileEventWriter(statusChangeConstructor, new File(dirName, "status_change_events.json"))
 
   def flushAndClose(): Unit = {
     authEventWriter.flushAndClose()
