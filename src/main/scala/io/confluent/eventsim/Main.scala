@@ -63,6 +63,9 @@ object Main extends App {
 
     val kafkaBrokerList: ScallopOption[String] =
       opt[String]("kafkaBrokerList", descr = "kafka broker list", required = false)
+    
+    val saveDaily = toggle("save-daily", default = Some(false),
+      descrYes = "saves a new file per day per event type", descrNo = "saves to 1 file per event type")
 
     val generateCounts = toggle("generate-counts", default = Some(false),
       descrYes = "generate listen counts file then stop", descrNo = "run normally")
@@ -118,6 +121,12 @@ object Main extends App {
   val realTime = ConfFromOptions.realTime.get.get
 
   val useAvro = ConfFromOptions.useAvro.get.get
+
+  val useKafka = ConfFromOptions.kafkaBrokerList.isSupplied
+
+  if (!useKafka && ConfFromOptions.saveDaily()) {
+    Output.setFileSuffix("_" + startTime.toLocalDate().toString())
+  }
 
   def generateEvents() = {
 
@@ -175,6 +184,7 @@ object Main extends App {
 
     var clock = startTime
     var events = 1
+    var lastSave = startTime.toLocalDate()
 
     while (clock.isBefore(endTime)) {
 
@@ -192,6 +202,13 @@ object Main extends App {
       clock = u.session.nextEventTimeStamp.get
 
       if (clock.isAfter(startTime)) Output.writeEvents(u.session, u.device, u.userId, u.props)
+
+      if (!useKafka && ConfFromOptions.saveDaily() && lastSave.plusDays(1).isBefore(clock.toLocalDate())) {
+        lastSave = lastSave.plusDays(1)
+        Output.flushAndClose()
+        Output.setFileSuffix("_" + lastSave.toString())
+      }
+
       u.nextEvent(prAttrition)
       users += u
       events += 1
