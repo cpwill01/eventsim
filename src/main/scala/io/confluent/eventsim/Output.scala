@@ -80,16 +80,16 @@ object Output {
   if (!dirName.exists())
     dirName.mkdir()
 
-  val authEventWriter =
+  var authEventWriter =
     if (kbl.isSupplied) new KafkaEventWriter(authConstructor, "auth_events", kbl.get.get)
     else new FileEventWriter(authConstructor, new File(dirName, "auth_events.json"))
-  val listenEventWriter =
+  var listenEventWriter =
     if (kbl.isSupplied) new KafkaEventWriter(listenConstructor, "listen_events", kbl.get.get)
     else new FileEventWriter(listenConstructor, new File(dirName, "listen_events.json"))
-  val pageViewEventWriter =
+  var pageViewEventWriter =
     if (kbl.isSupplied) new KafkaEventWriter(pageViewConstructor, "page_view_events", kbl.get.get)
     else new FileEventWriter(pageViewConstructor, new File(dirName, "page_view_events.json"))
-  val statusChangeEventWriter =
+  var statusChangeEventWriter =
     if (kbl.isSupplied) new KafkaEventWriter(statusChangeConstructor, "status_change_events", kbl.get.get)
     else new FileEventWriter(statusChangeConstructor, new File(dirName, "status_change_events.json"))
 
@@ -178,5 +178,12 @@ object Output {
     }
 
     pageViewEventWriter.write
+  }
+
+  def setFileSuffix(fileSuffix: String): Unit = {
+    authEventWriter = new FileEventWriter(authConstructor, new File(dirName, "auth_events" + fileSuffix + ".json"))
+    listenEventWriter = new FileEventWriter(listenConstructor, new File(dirName, "listen_events" + fileSuffix + ".json"))
+    pageViewEventWriter = new FileEventWriter(pageViewConstructor, new File(dirName, "page_view_events" + fileSuffix + ".json"))
+    statusChangeEventWriter = new FileEventWriter(statusChangeConstructor, new File(dirName, "status_change_events" + fileSuffix + ".json"))
   }
 }
