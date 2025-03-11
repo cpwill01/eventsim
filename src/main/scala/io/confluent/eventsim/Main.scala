@@ -47,6 +47,9 @@ object Main extends App {
     val firstUserId: ScallopOption[Int] =
       opt[Int]("userid", descr = "first user id", required = false, default = Option(1))
 
+    val populationFilePath: ScallopOption[String] =
+      opt[String]("population-file", descr = "path to population file", required = false, default = Option("data/Gaz_zcta_national.txt"))
+    
     val randomSeed: ScallopOption[Int] =
       opt[Int]("randomseed", descr = "random seed", required = false)
 
