@@ -19,6 +19,7 @@ class User(val alpha: Double,
   var session = new Session(
     Some(Session.pickFirstTimeStamp(startTime, alpha, beta)),
     alpha, beta, initialSessionStates, auth, initialLevel)
+  var isChurned = false
 
   override def compare(that: User) =
     (that.session.nextEventTimeStamp, this.session.nextEventTimeStamp) match {
@@ -37,11 +38,18 @@ class User(val alpha: Double,
       if (TimeUtilities.rng.nextDouble() < prAttrition ||
         session.currentState.auth == ConfigFromFile.churnedState.getOrElse("")) {
         session.nextEventTimeStamp = None
-        // TODO: mark as churned
+        isChurned = true
       }
-      else {
-        session = session.nextSession
-      }
+    }
+  }
+
+  def isSessionDone(): Boolean = session.done
+
+  def nextSession() = {
+    assert(session.done)
+    if (session.nextEventTimeStamp.isDefined) {
+      // Generate next session if user is not churned
+      session = session.nextSession
     }
   }
 

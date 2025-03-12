@@ -31,6 +31,9 @@ class Session(var nextEventTimeStamp: Option[LocalDateTime],
     nextState match {
       case None =>
         done = true
+        nextEventTimeStamp = Some(nextEventTimeStamp.get.plusSeconds(1))
+        previousState = Some(currentState)
+        itemInSession += 1
       case x if 300 until 399 contains x.get.status =>
         nextEventTimeStamp = Some(nextEventTimeStamp.get.plusSeconds(1))
         currentState = nextState.get
