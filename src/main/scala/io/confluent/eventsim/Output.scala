@@ -74,6 +74,10 @@ object Output {
     if (Main.useAvro) new AvroConstructor()
     else new JSONConstructor()
 
+  val sessionStartEndConstructor: io.confluent.eventsim.events.SessionStartEnd.Constructor =
+    if (Main.useAvro) new io.confluent.eventsim.events.SessionStartEnd.AvroConstructor()
+    else new io.confluent.eventsim.events.SessionStartEnd.JSONConstructor()
+
   val kbl = Main.ConfFromOptions.kafkaBrokerList
   val dirName = new File(if (Main.ConfFromOptions.outputDir.isSupplied) Main.ConfFromOptions.outputDir.get.get else "output")
 
@@ -92,17 +96,44 @@ object Output {
   var statusChangeEventWriter =
     if (kbl.isSupplied) new KafkaEventWriter(statusChangeConstructor, "status_change_events", kbl.get.get)
     else new FileEventWriter(statusChangeConstructor, new File(dirName, "status_change_events.json"))
+  var sessionStartEndEventWriter =
+    if (kbl.isSupplied) new KafkaEventWriter(sessionStartEndConstructor, "session_start_end_events", kbl.get.get)
+    else new FileEventWriter(sessionStartEndConstructor, new File(dirName, "session_start_end_events.json"))
 
   def flushAndClose(): Unit = {
     authEventWriter.flushAndClose()
     listenEventWriter.flushAndClose()
     pageViewEventWriter.flushAndClose()
     statusChangeEventWriter.flushAndClose()
+    sessionStartEndEventWriter.flushAndClose()
   }
 
-  def writeEvents(session: Session, device: Map[String, Any], userId: Int, props: Map[String, Any]) = {
+  def writeEvents(session: Session, device: Map[String, Any], userId: Int, props: Map[String, Any]): Unit = {
 
     val showUserDetails = ConfigFromFile.showUserWithState(session.currentState.auth)
+    if (session.done || !session.previousState.isDefined) {
+      sessionStartEndConstructor.start
+      sessionStartEndConstructor.setTs(session.nextEventTimeStamp.get.toInstant(ZoneOffset.UTC) toEpochMilli())
+      sessionStartEndConstructor.setSessionId(session.sessionId)
+      sessionStartEndConstructor.setLevel(session.currentState.level)
+      sessionStartEndConstructor.setItemInSession(session.itemInSession)
+      sessionStartEndConstructor.setAuth(session.currentState.auth)
+      sessionStartEndConstructor.setIsEnd(session.done)
+      sessionStartEndConstructor.setDeviceDetails(device)  
+      if (showUserDetails) {
+        sessionStartEndConstructor.setUserId(userId)
+        sessionStartEndConstructor.setUserDetails(props)
+        if (Main.tag.isDefined)
+          sessionStartEndConstructor.setTag(Main.tag.get)
+      }
+      sessionStartEndEventWriter.write
+
+      if (session.done) {
+        return
+      }
+
+    }
+
     pageViewConstructor.start
     pageViewConstructor.setTs(session.nextEventTimeStamp.get.toInstant(ZoneOffset.UTC) toEpochMilli())
     pageViewConstructor.setSessionId(session.sessionId)
@@ -185,5 +216,6 @@ object Output {
     listenEventWriter = new FileEventWriter(listenConstructor, new File(dirName, "listen_events" + fileSuffix + ".json"))
     pageViewEventWriter = new FileEventWriter(pageViewConstructor, new File(dirName, "page_view_events" + fileSuffix + ".json"))
     statusChangeEventWriter = new FileEventWriter(statusChangeConstructor, new File(dirName, "status_change_events" + fileSuffix + ".json"))
+    sessionStartEndEventWriter = new FileEventWriter(sessionStartEndConstructor, new File(dirName, "session_start_end_events" + fileSuffix + ".json"))
   }
 }

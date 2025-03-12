@@ -47,6 +47,9 @@ object Main extends App {
     val firstUserId: ScallopOption[Int] =
       opt[Int]("userid", descr = "first user id", required = false, default = Option(1))
 
+    val populationFilePath: ScallopOption[String] =
+      opt[String]("population-file", descr = "path to population file", required = false, default = Option("data/Gaz_zcta_national.txt"))
+    
     val randomSeed: ScallopOption[Int] =
       opt[Int]("randomseed", descr = "random seed", required = false)
 
@@ -203,13 +206,23 @@ object Main extends App {
 
       if (clock.isAfter(startTime)) Output.writeEvents(u.session, u.device, u.userId, u.props)
 
-      if (!useKafka && ConfFromOptions.saveDaily() && lastSave.plusDays(1).isBefore(clock.toLocalDate())) {
+      u.nextEvent(prAttrition)
+
+      if (u.isSessionDone && !u.isChurned) {
+        if (clock.isAfter(startTime)) {
+          Output.writeEvents(u.session, u.device, u.userId, u.props)
+        }
+        u.nextSession
+      }
+
+      if (!useKafka && ConfFromOptions.saveDaily() && 
+        (lastSave.plusDays(1).isBefore(clock.toLocalDate()) || lastSave.plusDays(1).isEqual(clock.toLocalDate()))
+        ) {
         lastSave = lastSave.plusDays(1)
         Output.flushAndClose()
         Output.setFileSuffix("_" + lastSave.toString())
       }
 
-      u.nextEvent(prAttrition)
       users += u
       events += 1
     }

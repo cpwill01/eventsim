@@ -1,5 +1,6 @@
 package io.confluent.eventsim.buildin
 
+import io.confluent.eventsim.Main
 import io.confluent.eventsim.WeightedRandomThingGenerator
 
 import scala.io.Source
@@ -27,7 +28,7 @@ import scala.io.Source
 
 object RandomLocationGenerator extends WeightedRandomThingGenerator[(String, String, String, Double, Double)] {
 
-  val statsSource = Source.fromFile("data/Gaz_zcta_national.txt", "ISO-8859-1")
+  val statsSource = Source.fromFile(Main.ConfFromOptions.populationFilePath(), "ISO-8859-1")
   val namesSource = Source.fromFile("data/US.txt", "ISO-8859-1")
 
   val statsLines = statsSource.getLines().drop(1)
