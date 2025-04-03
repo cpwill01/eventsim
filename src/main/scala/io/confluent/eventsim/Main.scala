@@ -82,6 +82,24 @@ object Main extends App {
     val useAvro = toggle("useAvro", default = Some(false),
       descrYes = "output data as Avro", descrNo = "output data as JSON")
 
+    val disableAuthOutput = toggle("disable-auth-output", default = Some(false),
+      descrYes = "output auth events", descrNo = "don't output auth events")
+
+    val disableListenOutput = toggle("disable-listen-output", default = Some(false),
+      descrYes = "output listen events", descrNo = "don't output listen events")
+
+    val disablePageViewOutput = toggle("disable-page-view-output", default = Some(false),
+      descrYes = "output page view events", descrNo = "don't output page view events")
+
+    val disableStatusChangeOutput = toggle("disable-status-change-output", default = Some(false),
+      descrYes = "output status change events", descrNo = "don't output status change events")
+
+    val disableSessionStartEndOutput = toggle("disable-session-start-end-output", default = Some(false),
+      descrYes = "output session start / end events", descrNo = "don't output session start / end events")
+
+    val disableUserInfoOutput = toggle("disable-user-info-output", default = Some(false),
+      descrYes = "output user info", descrNo = "don't output user info")
+
     verify()
   }
 
@@ -126,6 +144,13 @@ object Main extends App {
   val useAvro = ConfFromOptions.useAvro.get.get
 
   val useKafka = ConfFromOptions.kafkaBrokerList.isSupplied
+
+  val disableAuthOutput = ConfFromOptions.disableAuthOutput()
+  val disableListenOutput = ConfFromOptions.disableListenOutput()
+  val disablePageViewOutput = ConfFromOptions.disablePageViewOutput()
+  val disableStatusChangeOutput = ConfFromOptions.disableStatusChangeOutput()
+  val disableSessionStartEndOutput = ConfFromOptions.disableSessionStartEndOutput()
+  val disableUserInfoOutput = ConfFromOptions.disableUserInfoOutput()
 
   if (!useKafka && ConfFromOptions.saveDaily()) {
     Output.setFileSuffix("_" + startTime.toLocalDate().toString())
@@ -209,11 +234,16 @@ object Main extends App {
         (endTime.toEpochSecond(ZoneOffset.UTC) - startTime.toEpochSecond(ZoneOffset.UTC) / Constants.SECONDS_PER_YEAR)
       clock = u.session.nextEventTimeStamp.get
 
-      if (clock.isAfter(startTime)) Output.writeEvents(u.session, u.device, u.userId, u.props)
+      if (clock.isAfter(startTime)) {
+        Output.writeEvents(u.session, u.device, u.userId, u.props)
+      } else if (u.isFirstNotGuestEvent) {
+        Output.writeUserInfo(u.session, u.userId, u.props)
+      } 
+      
 
       u.nextEvent(prAttrition)
 
-      if (u.isSessionDone) {
+      if (u.isSessionDone && !u.isChurned) {
         if (clock.isAfter(startTime)) {
           Output.writeEvents(u.session, u.device, u.userId, u.props)
         }

@@ -20,6 +20,8 @@ class User(val alpha: Double,
     Some(Session.pickFirstTimeStamp(startTime, alpha, beta)),
     alpha, beta, initialSessionStates, auth, initialLevel)
   var isChurned = false
+  var isFirstNotGuestEvent = session.currentState.auth != "Guest"
+  var isGuest = !isFirstNotGuestEvent
 
   override def compare(that: User) =
     (that.session.nextEventTimeStamp, this.session.nextEventTimeStamp) match {
@@ -40,6 +42,11 @@ class User(val alpha: Double,
         session.nextEventTimeStamp = None
         isChurned = true
       }
+    } else if ((session.currentState.auth != "Guest") && isGuest) {
+      isGuest = false
+      isFirstNotGuestEvent = true
+    } else if (isFirstNotGuestEvent) {
+      isFirstNotGuestEvent = false
     }
   }
 

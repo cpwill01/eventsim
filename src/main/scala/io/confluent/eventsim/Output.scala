@@ -78,6 +78,10 @@ object Output {
     if (Main.useAvro) new io.confluent.eventsim.events.SessionStartEnd.AvroConstructor()
     else new io.confluent.eventsim.events.SessionStartEnd.JSONConstructor()
 
+  val userInfoConstructor: io.confluent.eventsim.events.Constructor =
+    if (Main.useAvro) new AvroConstructor()
+    else new JSONConstructor()
+
   val kbl = Main.ConfFromOptions.kafkaBrokerList
   val dirName = new File(if (Main.ConfFromOptions.outputDir.isSupplied) Main.ConfFromOptions.outputDir.get.get else "output")
 
@@ -99,6 +103,9 @@ object Output {
   var sessionStartEndEventWriter =
     if (kbl.isSupplied) new KafkaEventWriter(sessionStartEndConstructor, "session_start_end_events", kbl.get.get)
     else new FileEventWriter(sessionStartEndConstructor, new File(dirName, "session_start_end_events.json"))
+  var userInfoWriter =
+    if (kbl.isSupplied) new KafkaEventWriter(userInfoConstructor, "user_info", kbl.get.get)
+    else new FileEventWriter(userInfoConstructor, new File(dirName, "user_info.json"))
 
   def flushAndClose(): Unit = {
     authEventWriter.flushAndClose()
@@ -106,12 +113,27 @@ object Output {
     pageViewEventWriter.flushAndClose()
     statusChangeEventWriter.flushAndClose()
     sessionStartEndEventWriter.flushAndClose()
+    userInfoWriter.flushAndClose()
+  }
+
+  def writeUserInfo(session: Session, userId: Int, props: Map[String, Any]): Unit = {
+    if (!Main.disableUserInfoOutput) {
+      userInfoConstructor.start
+      userInfoConstructor.setTs(session.nextEventTimeStamp.get.toInstant(ZoneOffset.UTC) toEpochMilli())
+      userInfoConstructor.setUserId(userId)
+      userInfoConstructor.setUserDetails(props)
+      userInfoConstructor.setLevel(session.currentState.level)
+      if (Main.tag.isDefined) {
+        userInfoConstructor.setTag(Main.tag.get)
+      }
+      userInfoWriter.write
+    }
   }
 
   def writeEvents(session: Session, device: Map[String, Any], userId: Int, props: Map[String, Any]): Unit = {
 
     val showUserDetails = ConfigFromFile.showUserWithState(session.currentState.auth)
-    if (session.done || !session.previousState.isDefined) {
+    if ((session.done || !session.previousState.isDefined) && !Main.disableSessionStartEndOutput) {
       sessionStartEndConstructor.start
       sessionStartEndConstructor.setTs(session.nextEventTimeStamp.get.toInstant(ZoneOffset.UTC) toEpochMilli())
       sessionStartEndConstructor.setSessionId(session.sessionId)
@@ -134,47 +156,55 @@ object Output {
 
     }
 
-    pageViewConstructor.start
-    pageViewConstructor.setTs(session.nextEventTimeStamp.get.toInstant(ZoneOffset.UTC) toEpochMilli())
-    pageViewConstructor.setSessionId(session.sessionId)
-    pageViewConstructor.setPage(session.currentState.page)
-    pageViewConstructor.setAuth(session.currentState.auth)
-    pageViewConstructor.setMethod(session.currentState.method)
-    pageViewConstructor.setStatus(session.currentState.status)
-    pageViewConstructor.setLevel(session.currentState.level)
-    pageViewConstructor.setItemInSession(session.itemInSession)
-    pageViewConstructor.setDeviceDetails(device)
-    if (showUserDetails) {
-      pageViewConstructor.setUserId(userId)
-      pageViewConstructor.setUserDetails(props)
-      if (Main.tag.isDefined)
-        pageViewConstructor.setTag(Main.tag.get)
+    if (!Main.disablePageViewOutput) {
+      pageViewConstructor.start
+      pageViewConstructor.setTs(session.nextEventTimeStamp.get.toInstant(ZoneOffset.UTC) toEpochMilli())
+      pageViewConstructor.setSessionId(session.sessionId)
+      pageViewConstructor.setPage(session.currentState.page)
+      pageViewConstructor.setAuth(session.currentState.auth)
+      pageViewConstructor.setMethod(session.currentState.method)
+      pageViewConstructor.setStatus(session.currentState.status)
+      pageViewConstructor.setLevel(session.currentState.level)
+      pageViewConstructor.setItemInSession(session.itemInSession)
+      pageViewConstructor.setDeviceDetails(device)
+      if (showUserDetails) {
+        pageViewConstructor.setUserId(userId)
+        pageViewConstructor.setUserDetails(props)
+        if (Main.tag.isDefined)
+          pageViewConstructor.setTag(Main.tag.get)
+      }
     }
+
 
     if (session.currentState.page == "NextSong") {
-      pageViewConstructor.setArtist(session.currentSong.get._2)
-      pageViewConstructor.setTitle(session.currentSong.get._3)
-      pageViewConstructor.setDuration(session.currentSong.get._4)
-      listenConstructor.start()
-      listenConstructor.setArtist(session.currentSong.get._2)
-      listenConstructor.setTitle(session.currentSong.get._3)
-      listenConstructor.setDuration(session.currentSong.get._4)
-      listenConstructor.setTs(session.nextEventTimeStamp.get.toInstant(ZoneOffset.UTC) toEpochMilli())
-      listenConstructor.setSessionId(session.sessionId)
-      listenConstructor.setAuth(session.currentState.auth)
-      listenConstructor.setLevel(session.currentState.level)
-      listenConstructor.setItemInSession(session.itemInSession)
-      listenConstructor.setDeviceDetails(device)
-      if (showUserDetails) {
-        listenConstructor.setUserId(userId)
-        listenConstructor.setUserDetails(props)
-        if (Main.tag.isDefined)
-          listenConstructor.setTag(Main.tag.get)
+      if (!Main.disablePageViewOutput) {
+        pageViewConstructor.setArtist(session.currentSong.get._2)
+        pageViewConstructor.setTitle(session.currentSong.get._3)
+        pageViewConstructor.setDuration(session.currentSong.get._4)
       }
-      listenEventWriter.write
+
+      if (!Main.disableListenOutput) {
+        listenConstructor.start()
+        listenConstructor.setArtist(session.currentSong.get._2)
+        listenConstructor.setTitle(session.currentSong.get._3)
+        listenConstructor.setDuration(session.currentSong.get._4)
+        listenConstructor.setTs(session.nextEventTimeStamp.get.toInstant(ZoneOffset.UTC) toEpochMilli())
+        listenConstructor.setSessionId(session.sessionId)
+        listenConstructor.setAuth(session.currentState.auth)
+        listenConstructor.setLevel(session.currentState.level)
+        listenConstructor.setItemInSession(session.itemInSession)
+        listenConstructor.setDeviceDetails(device)
+        if (showUserDetails) {
+          listenConstructor.setUserId(userId)
+          listenConstructor.setUserDetails(props)
+          if (Main.tag.isDefined)
+            listenConstructor.setTag(Main.tag.get)
+        }
+        listenEventWriter.write
+      }
     }
 
-    if (session.currentState.page == "Submit Downgrade" || session.currentState.page == "Submit Upgrade") {
+    if ((session.currentState.page == "Submit Downgrade" || session.currentState.page == "Submit Upgrade") && !Main.disableStatusChangeOutput) {
       statusChangeConstructor.start()
       statusChangeConstructor.setTs(session.nextEventTimeStamp.get.toInstant(ZoneOffset.UTC) toEpochMilli())
       statusChangeConstructor.setSessionId(session.sessionId)
@@ -191,7 +221,7 @@ object Output {
       statusChangeEventWriter.write
     }
 
-    if (session.previousState.isDefined && session.previousState.get.page == "Login") {
+    if (session.previousState.isDefined && session.previousState.get.page == "Login" && !Main.disableAuthOutput) {
       authConstructor.start()
       authConstructor.setTs(session.nextEventTimeStamp.get.toInstant(ZoneOffset.UTC) toEpochMilli())
       authConstructor.setSessionId(session.sessionId)
@@ -208,14 +238,17 @@ object Output {
       authEventWriter.write
     }
 
-    pageViewEventWriter.write
+    if (!Main.disablePageViewOutput) {
+      pageViewEventWriter.write
+    }
   }
 
   def setFileSuffix(fileSuffix: String): Unit = {
-    authEventWriter = new FileEventWriter(authConstructor, new File(dirName, "auth_events" + fileSuffix + ".json"))
-    listenEventWriter = new FileEventWriter(listenConstructor, new File(dirName, "listen_events" + fileSuffix + ".json"))
-    pageViewEventWriter = new FileEventWriter(pageViewConstructor, new File(dirName, "page_view_events" + fileSuffix + ".json"))
-    statusChangeEventWriter = new FileEventWriter(statusChangeConstructor, new File(dirName, "status_change_events" + fileSuffix + ".json"))
-    sessionStartEndEventWriter = new FileEventWriter(sessionStartEndConstructor, new File(dirName, "session_start_end_events" + fileSuffix + ".json"))
+    if (!Main.disableAuthOutput) authEventWriter = new FileEventWriter(authConstructor, new File(dirName, "auth_events" + fileSuffix + ".json"))
+    if (!Main.disableListenOutput) listenEventWriter = new FileEventWriter(listenConstructor, new File(dirName, "listen_events" + fileSuffix + ".json"))
+    if (!Main.disablePageViewOutput) pageViewEventWriter = new FileEventWriter(pageViewConstructor, new File(dirName, "page_view_events" + fileSuffix + ".json"))
+    if (!Main.disableStatusChangeOutput) statusChangeEventWriter = new FileEventWriter(statusChangeConstructor, new File(dirName, "status_change_events" + fileSuffix + ".json"))
+    if (!Main.disableSessionStartEndOutput) sessionStartEndEventWriter = new FileEventWriter(sessionStartEndConstructor, new File(dirName, "session_start_end_events" + fileSuffix + ".json"))
+    if (!Main.disableUserInfoOutput) userInfoWriter = new FileEventWriter(userInfoConstructor, new File(dirName, "user_info" + fileSuffix + ".json"))
   }
 }
