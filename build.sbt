@@ -24,6 +24,10 @@ libraryDependencies += "org.scala-lang.modules" % "scala-parser-combinators_2.12
 
 libraryDependencies += "com.sun.xml.bind" % "jaxb-impl" % "2.3.3"
 
+libraryDependencies ++= Seq (
+  "org.slf4j" % "slf4j-simple" % "1.7.3",
+  "org.slf4j" % "slf4j-api" % "1.7.3"
+)
 
 // libraryDependencies += "io.confluent" % "kafka-avro-serializer" % "2.0.0"
 

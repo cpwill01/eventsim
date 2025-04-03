@@ -181,6 +181,9 @@ object Main extends App {
         System.err.write("\r".getBytes)
         System.err.write(message.getBytes)
       }
+      if ((e % 1000000) == 0) {
+        System.err.println("")
+      }
     }
     System.err.println("Starting to generate events.")
     System.err.println("Damping=" + ConfigFromFile.damping + ", Weekend-Damping=" + ConfigFromFile.weekendDamping)
@@ -194,8 +197,10 @@ object Main extends App {
       if (realTime) {
         val now = LocalDateTime.now()
         val dif = Duration.between(clock, now)
-        if (dif.isNegative)
+
+        if (dif.isNegative) {
           Thread.sleep(dif.abs.toMillis)
+        }
       }
 
       showProgress(clock, users.length, events)
@@ -208,7 +213,7 @@ object Main extends App {
 
       u.nextEvent(prAttrition)
 
-      if (u.isSessionDone && !u.isChurned) {
+      if (u.isSessionDone) {
         if (clock.isAfter(startTime)) {
           Output.writeEvents(u.session, u.device, u.userId, u.props)
         }

@@ -42,7 +42,7 @@ object Output {
     props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers)
 
     val producer = new KafkaProducer[Object, Object](props)
-
+    System.err.println("Created kafka writer: " + topic + " : " + brokers)
     def write() = {
       val value =
         constructor match {
