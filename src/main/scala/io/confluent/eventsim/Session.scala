@@ -25,6 +25,7 @@ class Session(var nextEventTimeStamp: Option[LocalDateTime],
     if (currentState.page == "NextSong") Some(RandomSongGenerator.nextSong()) else None
   var currentSongEnd: Option[LocalDateTime] =
     if (currentState.page == "NextSong") Some(nextEventTimeStamp.get.plusSeconds(currentSong.get._4.toInt)) else None
+  var currentAdValue: Option[Float] = None
 
   def incrementEvent() = {
     val nextState = currentState.nextState(rng)
@@ -51,6 +52,19 @@ class Session(var nextEventTimeStamp: Option[LocalDateTime],
           currentSong = Some(RandomSongGenerator.nextSong(currentSong.get._1))
         }
         currentSongEnd = Some(nextEventTimeStamp.get.plusSeconds(currentSong.get._4.toInt))
+        previousState = Some(currentState)
+        currentState = nextState.get
+        itemInSession += 1
+
+      case x if x.get.page == "PlayAd" =>
+        if (currentSong.isEmpty) {
+          nextEventTimeStamp = Some(nextEventTimeStamp.get.plusSeconds(exponentialRandomValue(alpha).toInt))
+        } else {
+          nextEventTimeStamp = currentSongEnd
+        }
+        // generates uniformly random value in  0.005, 0.006, 0.007, 0.008, 0.009, 0.01
+        // arbitrarily set values to simulate different types of ads giving different amounts of revenue per impression
+        currentAdValue = Some(((TimeUtilities.rng.nextInt(6) * 0.001) + 0.005).toFloat)
         previousState = Some(currentState)
         currentState = nextState.get
         itemInSession += 1

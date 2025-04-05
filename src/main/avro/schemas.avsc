@@ -241,6 +241,13 @@
         "null",
         "string"
       ]
+    },
+    {
+      "name": "adRevenue",
+      "type": [
+        "null",
+        "float"
+      ]
     }
   ]
 },

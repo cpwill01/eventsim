@@ -173,16 +173,13 @@ object Output {
         if (Main.tag.isDefined)
           pageViewConstructor.setTag(Main.tag.get)
       }
+      if (session.currentState.page == "PlayAd") {
+        pageViewConstructor.setAdRevenue(session.currentAdValue.get)
+      }
     }
 
 
     if (session.currentState.page == "NextSong") {
-      if (!Main.disablePageViewOutput) {
-        pageViewConstructor.setArtist(session.currentSong.get._2)
-        pageViewConstructor.setTitle(session.currentSong.get._3)
-        pageViewConstructor.setDuration(session.currentSong.get._4)
-      }
-
       if (!Main.disableListenOutput) {
         listenConstructor.start()
         listenConstructor.setArtist(session.currentSong.get._2)

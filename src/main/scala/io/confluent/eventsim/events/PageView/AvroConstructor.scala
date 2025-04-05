@@ -28,6 +28,7 @@ class AvroConstructor() extends io.confluent.eventsim.events.AvroConstructor[Pag
 
   def setTag(s: String) = eventBuilder.setTag(s)
 
+  def setAdRevenue(f: Float) = eventBuilder.setAdRevenue(f)
 
   var songBuilder = song.newBuilder()
 
