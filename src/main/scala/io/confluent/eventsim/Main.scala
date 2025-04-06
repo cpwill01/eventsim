@@ -236,7 +236,9 @@ object Main extends App {
 
       if (clock.isAfter(startTime)) {
         Output.writeEvents(u.session, u.device, u.userId, u.props)
-      } else if (u.isFirstNotGuestEvent) {
+      }
+
+      if (u.isFirstNotGuestEvent) {
         Output.writeUserInfo(u.session, u.userId, u.props)
       } 
       

@@ -26,6 +26,5 @@ object UserProperties {
   }
 
   def randomNewProps(dt: LocalDateTime) =
-    randomProps + ("registration" -> dt.toInstant(ZoneOffset.UTC).toEpochMilli)
-
+    randomProps
 }
